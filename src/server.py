@@ -24,6 +24,16 @@ pub = rospy.Publisher('bcast_states_topic', numpy_msg(bcast_sitaw), queue_size=1
 rate = rospy.Rate(rate_var)
 
 while not rospy.is_shutdown():
+    # Safely extract the current time step from ship_1's state
+    current_t = 0
+    if 'ship_1' in all_states and len(all_states['ship_1']) > 0:
+        current_t = all_states['ship_1'][0]
+    
+    # If the simulation time reaches T_sim, terminate the server node cleanly:
+    if current_t >= T_sim:
+        rospy.loginfo("Server: Reached T_sim. Shutting down ROS core session...")
+        rospy.signal_shutdown("Simulation reached T_sim")
+        break
     # receiving individual ship states and combining them
     rospy.Subscriber('ship_state_topic', ship_states, ship_state_callback)
 

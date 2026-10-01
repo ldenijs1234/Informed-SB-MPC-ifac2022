@@ -1,0 +1,18 @@
+podman run -it --rm --net=host \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -v /mnt/c/Users/lars/Documents/catkin_ws:/root/catkin_ws:rw \
+  docker.io/osrf/ros:noetic-desktop-full bash
+
+# 1. Install prerequisites (since --rm starts a clean container)
+apt update && apt install -y python3-pip python-is-python3 python3-tk
+pip3 install --upgrade numpy
+pip3 install pandas matplotlib shapely
+
+# 2. Enter workspace, source ROS, and build/source the package
+cd /root/catkin_ws
+source /opt/ros/noetic/setup.bash
+catkin_make
+source devel/setup.bash
+
+roslaunch informed_sbmpc mass_sim.launch

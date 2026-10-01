@@ -191,6 +191,10 @@ class SBMPC:
             return u_os_best, chi_os_best
 
         if sbmpc_active:
+            # Refresh target ship's intent-informed trajectory prediction!
+            for targetship in ts_list:
+                targetship.trajectory_prediction(psi=targetship.psi, U=targetship.u, pred_hor=self.T, time_step=self.dt)
+
             # Create ownship trajectories for each course and speed offset combination
             for i in range(len(self.chi_ca)):
                 for j in range(len(self.p_ca)):

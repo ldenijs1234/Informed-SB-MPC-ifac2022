@@ -6,6 +6,8 @@ import os
 from queue import Empty
 import rospy
 import numpy as np
+import pandas as pd
+import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.gridspec as gridspec
@@ -19,7 +21,6 @@ from sbmpc import *
 from dsbmpc import *
 from colav import *
 from random import randint
-
 
 def sitaw_callback(rx_data):
     global all_states
@@ -57,6 +58,8 @@ sbmpc = SBMPC()
 dsbmpc = DSBMPC(ownship)
 ts_id_list = []
 ts_list = []
+solve_times = []  # List to store solve times for each time step
+history = []  # List to store the history of ownship states
 all_states = {}
 dist_log = np.zeros((2, T_sim))
 
@@ -69,25 +72,67 @@ state_msg = ship_states()
 rospy.init_node('ship_node', anonymous=True)
 rate = rospy.Rate(rate_var)
 
+# At the top of ship1.py after rospy.init_node
+active_case = rospy.get_param('~scenario_case', 'case01')
+active_mode = rospy.get_param('~colav_mode', 'RA')  # 'RA' or 'IS'
+
+# Tell the ship model whether route exchange is enabled
+# For RA: ownship.route_exchange = False
+# For IS: ownship.route_exchange = True
+ownship.route_exchange = (active_mode == 'IS')
+
 # starting direct message service server
 s = direct_msg_response(ownship)
 
-#while not rospy.is_shutdown():
-while t <= T_sim:
+while not rospy.is_shutdown():
+    if t > T_sim:
+        print(f"[{ownship.id}] Reached T_sim ({T_sim}). Breaking simulation loop...")
+        break
     # publish own states [t, id, x, y, psi, U, colregs18, [trajectory]]
     publish_states(t, ownship, state_msg, pub_states)
 
     # printing sitaw data
-    print(all_states)
+    # print(all_states)
     
     # Creating target ships from received data
     ts_id_list, ts_list = create_ts_data(ts_id_list, ts_list, all_states, ownship, dt)
+
+    # Run COLAV and record solver execution time
+    step_solve_time_ms = colav(t, ownship, ts_list, sbmpc, dsbmpc, initial_reaction=True)
+    solve_times.append(step_solve_time_ms)
+
+    # ALWAY RECORD HISTORY (Fallback to all_states if out of detection range)
+    ts_x, ts_y, ts_psi, ts_u = 0.0, 0.0, 0.0, 0.0
+    if len(ts_list) > 0:
+        ts_x = ts_list[0].x
+        ts_y = ts_list[0].y
+        ts_psi = ts_list[0].psi
+        ts_u = ts_list[0].u
+    elif 'ship_2' in all_states and len(all_states['ship_2']) > 7:
+        # Fallback to pure situation awareness coordinates
+        ts_x = all_states['ship_2'][2]
+        ts_y = all_states['ship_2'][3]
+        ts_psi = all_states['ship_2'][4]
+        ts_u = all_states['ship_2'][5]
+        
+        history.append({
+            'time': t,
+            'ship_1_x': ownship.x,
+            'ship_1_y': ownship.y,
+            'ship_1_psi': ownship.psi,
+            'ship_1_u': ownship.u,
+            'ship_2_x': ts_x,
+            'ship_2_y': ts_y,
+            'ship_2_psi': ts_psi,
+            'ship_2_u': ts_u,
+            'solve_time_ms': step_solve_time_ms
+        })
 
     # move ship
     ownship.move(dt)
 
     # Find best offset course and speed values
-    colav(t, ownship, ts_list, sbmpc, dsbmpc, initial_reaction=True)
+    # colav(t, ownship, ts_list, sbmpc, dsbmpc, initial_reaction=True)
     #ownship.set_opt_ctrl(0, 1)
 
     # Distance log for graph
@@ -97,8 +142,100 @@ while t <= T_sim:
     rate.sleep()
     t = t+1
 
+print(f"DEBUG: Loop ended. Total history records captured: {len(history)}")
 # Wait for manual termination/shutdown
-s.spin()
+#s.spin()
+
+# --- Post-Simulation Export Block ---
+if len(history) > 0:
+    # 2. Build the DataFrame
+    df = pd.DataFrame(history)
+
+    # 3. Calculate Euclidean separation distance
+    df['separation_dist_m'] = np.sqrt(
+        (df['ship_1_x'] - df['ship_2_x'])**2 + 
+        (df['ship_1_y'] - df['ship_2_y'])**2
+    )
+
+    # 4. Calculate rate of change of heading (steering rate in deg/s)
+    delta_psi = np.diff(df['ship_1_psi'].values, prepend=df['ship_1_psi'].values[0])
+    delta_psi = (delta_psi + np.pi) % (2 * np.pi) - np.pi
+    df['steering_rate_deg_s'] = np.abs(np.degrees(delta_psi) / dt)
+
+    # 5. Extract Key Validation Metrics
+    min_dist = df['separation_dist_m'].min()
+    max_steering_rate = df['steering_rate_deg_s'].max()
+    active_solves = df[df['solve_time_ms'] > 0]['solve_time_ms']
+    mean_solve_time = active_solves.mean() if len(active_solves) > 0 else 0.0
+    peak_solve_time = df['solve_time_ms'].max()
+
+    # 6. Save to CSV
+    results_dir = os.path.join(os.path.dirname(__file__), 'sim_results')
+    os.makedirs(results_dir, exist_ok=True)
+    # Unique filenames per case and mode
+    csv_path = os.path.join(results_dir, f"{active_case}_{active_mode}_metrics.csv")
+    # plot_path = os.path.join(results_dir, f"{active_case}_{active_mode}_trajectory.png")
+    
+    df.to_csv(csv_path, index=False)
+    
+    # Save the trajectory plot
+    # If using matplotlib inside ship1.py or server.py:
+    # plt.savefig(plot_path, dpi=300)
+    print(f"[{active_case} - {active_mode}] Saved metrics to {csv_path}")
+
+    print("\n================ BENCHMARK SUMMARY ================")
+    print(f"Data saved to: {csv_path}")
+    print(f"Minimum Distance to Target Ship: {min_dist:.2f} m")
+    print(f"Maximum Steering Rate:          {max_steering_rate:.2f} deg/s")
+    print(f"Average Active Solve Time:      {mean_solve_time:.2f} ms")
+    print(f"Peak Cycle Solve Time:          {peak_solve_time:.2f} ms")
+    print("===================================================\n")
+
+#############################
+# PAPER PLOT (FIG. a / FIG. b)
+#############################
+try:
+    df_anim, anim_length = create_animation_data(ownship, ts_list)
+    sim_results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sim_results")
+    os.makedirs(sim_results_dir, exist_ok=True)
+
+    fig_paper, ax = plt.subplots(figsize=(6, 9))
+    ax.grid(True, linestyle='-', alpha=0.5)
+    ax.set_xlim(-2500.0, 2500.0)
+    ax.set_ylim(-2500.0, 2500.0)
+
+    # Land polygons (wheat/gray)
+    try:
+        for geom in poly_full.geoms:
+            xs, ys = geom.exterior.xy
+            ax.fill(xs, ys, c='gray', alpha=0.8, fc='wheat')
+    except Exception:
+        pass
+
+    # Nominal path lines (dashed)
+    ax.plot([wp[0] for wp in ownship.wp], [wp[1] for wp in ownship.wp], 'b--', alpha=0.4, linewidth=1)
+    for ts in ts_list:
+        ax.plot([wp[0] for wp in ts.wp], [wp[1] for wp in ts.wp], 'm--', alpha=0.4, linewidth=1)
+
+    # Convert Series to numpy arrays (.to_numpy()) to avoid pandas/matplotlib 2D indexing issue:
+    ax.plot(df_anim['ship_1_x'].to_numpy(), df_anim['ship_1_y'].to_numpy(), 'b-', label='ship_1 (OS)', linewidth=1.5)
+    for ts in ts_list:
+        ax.plot(df_anim[f'{ts.id}_x'].to_numpy(), df_anim[f'{ts.id}_y'].to_numpy(), 'm-', label=ts.id, linewidth=1.5)
+
+    # End positions (markers)
+    ax.plot(df_anim['ship_1_x'].iloc[-1], df_anim['ship_1_y'].iloc[-1], 'bo', mfc='none', markersize=8)
+    for ts in ts_list:
+        ax.plot(df_anim[f'{ts.id}_x'].iloc[-1], df_anim[f'{ts.id}_y'].iloc[-1], 'mo', mfc='none', markersize=8)
+
+    plt.title("Head-on Encounter Result")
+    output_file = os.path.join(sim_results_dir, f"{active_case}_{active_mode}_trajectory.png")
+    fig_paper.savefig(output_file, dpi=300)
+    plt.close(fig_paper)
+    print(f"\n[SUCCESS] Saved trajectory plot to: {output_file}")
+except Exception as e:
+    print(f"\n[ERROR] Failed to create/save trajectory plot: {e}")
+
+rospy.signal_shutdown("Simulation and plotting finished successfully.")
 
 #############################
 # VISUALIZATION
@@ -173,8 +310,8 @@ ani = animation.FuncAnimation(fig, animate, init_func=init_ani,
                               frames=anim_length, interval=50, blit=False)
 sim_results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sim_results")
 os.makedirs(sim_results_dir, exist_ok=True)
-ani.save(os.path.join(sim_results_dir, "animation.mp4"))
-plt.show()
+fig_paper.savefig(os.path.join(sim_results_dir, "animation.png"))
+plt.close(fig_paper)
 
 
 """

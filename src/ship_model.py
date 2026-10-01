@@ -317,7 +317,9 @@ class TargetShip:
             # If cross track error is smaller than threshold value or XTD value from route exchange message,
             # prediction is based on route exchange
 
-            if abs(e) <= 100:  # Uncomment to enable route exchange
+            route_exchange_enabled = rospy.get_param('/route_exchange', False)
+
+            if route_exchange_enabled and abs(e) <= 100:  # Uncomment to enable route exchange
             #if abs(e) < 0:      # Uncomment to disable route exchange
                 self.x_pred[i] = ts_temp.x
                 self.y_pred[i] = ts_temp.y

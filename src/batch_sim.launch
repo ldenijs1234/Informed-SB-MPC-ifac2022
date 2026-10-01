@@ -1,0 +1,25 @@
+<launch>
+  <arg name="scenario_case" default="case01"/>
+  <arg name="colav_mode" default="RA"/>
+
+  <!-- Global parameter read by ship_model.py -->
+  <!-- Set true if IS, false if RA -->
+  <param name="/route_exchange" value="true" if="$(eval arg('colav_mode') == 'IS')"/>
+  <param name="/route_exchange" value="false" unless="$(eval arg('colav_mode') == 'IS')"/>
+
+  <!-- Nodes -->
+  <node pkg="informed_sbmpc" type="server.py" name="server" output="screen">
+    <param name="scenario_case" value="$(arg scenario_case)"/>
+    <param name="colav_mode" value="$(arg colav_mode)"/>
+  </node>
+
+  <node pkg="informed_sbmpc" type="ship2.py" name="ship2" output="screen">
+    <param name="scenario_case" value="$(arg scenario_case)"/>
+    <param name="colav_mode" value="$(arg colav_mode)"/>
+  </node>
+
+  <node pkg="informed_sbmpc" type="ship1.py" name="ship1" output="screen" required="true">
+    <param name="scenario_case" value="$(arg scenario_case)"/>
+    <param name="colav_mode" value="$(arg colav_mode)"/>
+  </node>
+</launch>

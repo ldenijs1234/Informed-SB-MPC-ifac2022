@@ -64,26 +64,33 @@ rate = rospy.Rate(rate_var)
 # starting direct message service server
 s = direct_msg_response(ownship)
 
-#while not rospy.is_shutdown():
-while t <= T_sim:
-    # publish own states [t, id, x, y, psi, U, colregs18, [trajectory]]
-    publish_states(t, ownship, state_msg, pub_states)
+last_t_seen = -1
 
-    # receiving sitaw data
-    #print(all_states)
-    
-    # Creating target ships from received data
-    ts_id_list, ts_list = create_ts_data(ts_id_list, ts_list, all_states, ownship, dt)
+while not rospy.is_shutdown() and t <= T_sim:
+    if t >= T_sim:
+        rospy.signal_shutdown("Simulation reached T_sim")
+        break
+    # Wait until ship_1 has published its state for this step
+    if 'ship_1' in all_states:
+        ship1_t = all_states['ship_1'][0]
+        
+        # Only step when ship_1 has reached or exceeded our current time step
+        if ship1_t >= t and ship1_t != last_t_seen:
+            last_t_seen = ship1_t
 
-    # move ship
-    ownship.move(dt)
+            # publish own states [t, id, x, y, psi, U, colregs18, [trajectory]]
+            publish_states(t, ownship, state_msg, pub_states)
 
-    # Find best offset course and speed values
-    colav(t, ownship, ts_list, sbmpc, dsbmpc, initial_reaction=False)
-    #ownship.set_opt_ctrl(0, 1)
+            # Creating target ships from received data
+            ts_id_list, ts_list = create_ts_data(ts_id_list, ts_list, all_states, ownship, dt)
+
+            # move ship
+            ownship.move(dt)
+            ownship.set_opt_ctrl(0, 1)
+
+            t = t + 1
 
     rate.sleep()
-    t = t+1
 
-# Wait for manual termination/shutdown
-s.spin()
+# Keep node alive until shutdown
+rospy.spin()
