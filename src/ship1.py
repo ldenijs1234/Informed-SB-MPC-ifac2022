@@ -88,6 +88,15 @@ while not rospy.is_shutdown():
     if t > T_sim:
         print(f"[{ownship.id}] Reached T_sim ({T_sim}). Breaking simulation loop...")
         break
+
+    # --- SYNCHRONIZATION LOCK ---
+    # Ensure ship_2 is not lagging more than 1 step behind before calculating COLAV
+    ship2_t = all_states['ship_2'][0] if 'ship_2' in all_states else 0
+    if ship2_t < (t - 1):
+        rate.sleep()
+        continue  # Skip this loop iteration and wait for ship_2 to catch up
+    # ----------------------------
+    
     # publish own states [t, id, x, y, psi, U, colregs18, [trajectory]]
     publish_states(t, ownship, state_msg, pub_states)
 
