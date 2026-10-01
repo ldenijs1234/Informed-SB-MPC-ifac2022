@@ -115,18 +115,18 @@ while not rospy.is_shutdown():
         ts_psi = all_states['ship_2'][4]
         ts_u = all_states['ship_2'][5]
         
-        history.append({
-            'time': t,
-            'ship_1_x': ownship.x,
-            'ship_1_y': ownship.y,
-            'ship_1_psi': ownship.psi,
-            'ship_1_u': ownship.u,
-            'ship_2_x': ts_x,
-            'ship_2_y': ts_y,
-            'ship_2_psi': ts_psi,
-            'ship_2_u': ts_u,
-            'solve_time_ms': step_solve_time_ms
-        })
+    history.append({
+        'time': t,
+        'ship_1_x': ownship.x,
+        'ship_1_y': ownship.y,
+        'ship_1_psi': ownship.psi,
+        'ship_1_u': ownship.u,
+        'ship_2_x': ts_x,
+        'ship_2_y': ts_y,
+        'ship_2_psi': ts_psi,
+        'ship_2_u': ts_u,
+        'solve_time_ms': step_solve_time_ms
+    })
 
     # move ship
     ownship.move(dt)

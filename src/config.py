@@ -13,7 +13,7 @@ ship1_trajectory = [[0.0, -2000.0, 8.0], [0.0, 2500.0, 8.0]]
 psi1 = math.atan2(ship1_trajectory[1][1] - ship1_trajectory[0][1], ship1_trajectory[1][0] - ship1_trajectory[0][0])
 ship1_init_states = [0, 'ship_1', ship1_trajectory[0][0], ship1_trajectory[0][1], psi1, ship1_trajectory[0][2], 0.0, 0.0, "PDV", ship1_trajectory]
 
-ship2_trajectory = [[0.0, 2000.0, 8.0], [0.0, -2000.0, 8.0]]
+ship2_trajectory = [[-100.0, 2000.0, 8.0], [-100.0, 500.0, 8.0], [1000.0, -2000.0, 8.0]]
 psi2 = math.atan2(ship2_trajectory[1][1] - ship2_trajectory[0][1], ship2_trajectory[1][0] - ship2_trajectory[0][0])
 ship2_init_states = [0, 'ship_2', ship2_trajectory[0][0], ship2_trajectory[0][1], psi2, ship2_trajectory[0][2], 0.0, 0.0, "PDV", ship2_trajectory]
 
