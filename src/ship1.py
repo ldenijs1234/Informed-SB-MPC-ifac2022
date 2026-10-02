@@ -204,27 +204,68 @@ if len(history) > 0:
 # PAPER PLOT (FIG. a / FIG. b)
 #############################
 try:
-    fig_paper, ax = plt.subplots(figsize=(6, 9))
-        
-    # Plot physical paths directly from our safe dataframe
-    ax.plot(df['ship_1_x'], df['ship_1_y'], 'b-', label='OS (ship_1)', linewidth=1.5)
-    ax.plot(df['ship_2_x'], df['ship_2_y'], 'r-', label='TS (ship_2)', linewidth=1.5)
-        
-    # Mark endpoints
-    ax.plot(df['ship_1_x'].iloc[-1], df['ship_1_y'].iloc[-1], 'bo', mfc='none', markersize=8)
-    ax.plot(df['ship_2_x'].iloc[-1], df['ship_2_y'].iloc[-1], 'ro', mfc='none', markersize=8)
-        
-    ax.grid(True, linestyle='--', alpha=0.6)
-    ax.set_title(f"{active_case} Trajectory ({active_mode})")
-    ax.set_xlabel("East (X) [m]")
-    ax.set_ylabel("North (Y) [m]")
-    ax.legend()
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
 
-    plot_filename = f"{active_case}_{active_mode}_trajectory.png"
-    output_file = os.path.join(results_dir, plot_filename)
-    fig_paper.savefig(output_file, dpi=300)
+    fig_paper, ax = plt.subplots(figsize=(6, 9), dpi=300)
+    ax.grid(True, linestyle='-', alpha=0.5)
+    ax.set_xlim(-2500.0, 2500.0)
+    ax.set_ylim(-2500.0, 2500.0)
+
+    # 1. Canal banks / Land Polygons (Gray)
+    try:
+        for geom in poly_full.geoms:
+            xs, ys = geom.exterior.xy
+            ax.fill(xs, ys, color='gray', alpha=0.8)
+    except Exception as e:
+        pass
+
+    # 2. Extract nominal waypoints
+    os_wps = ownship.wp
+    ts_wps = []
+    if 'ship_2' in all_states and len(all_states['ship_2']) > 7:
+        ts_wps = all_states['ship_2'][-1]
+    elif len(ts_list) > 0 and hasattr(ts_list[0], 'wp'):
+        ts_wps = ts_list[0].wp
+
+    # Nominal dashed paths
+    if len(os_wps) > 1:
+        ax.plot([wp[0] for wp in os_wps], [wp[1] for wp in os_wps], 'b--', alpha=0.4, linewidth=1.0)
+    if len(ts_wps) > 1:
+        ax.plot([wp[0] for wp in ts_wps], [wp[1] for wp in ts_wps], 'm--', alpha=0.4, linewidth=1.0)
+
+    # 3. Driven directly from the safe DataFrame using .to_numpy()
+    s1_x = df['ship_1_x'].to_numpy()
+    s1_y = df['ship_1_y'].to_numpy()
+    s2_x = df['ship_2_x'].to_numpy()
+    s2_y = df['ship_2_y'].to_numpy()
+
+    ax.plot(s1_x, s1_y, 'b-', label='ship_1 (OS)', linewidth=1.5)
+    ax.plot(s2_x, s2_y, 'm-', label='ship_2 (TS)', linewidth=1.5)
+
+    # 4. Hollow circle end positions
+    ax.plot(s1_x[-1], s1_y[-1], 'bo', mfc='none', markersize=8)
+    ax.plot(s2_x[-1], s2_y[-1], 'mo', mfc='none', markersize=8)
+
+    # 5. Dynamic scenario title
+    titles = {
+        'case01': 'Head-on Encounter Result',
+        'case02': 'Turning TS Encounter Result (Fig. 5)',
+        'case03': 'Crossing Encounter Result',
+        'case04': 'Curved Fairway Crossing Result',
+        'case05': 'Harbor Turn Encounter Result',
+        'case06': 'Overtaking Encounter Result'
+    }
+    title_text = titles.get(active_case, f"{active_case.upper()} Encounter Result")
+    ax.set_title(f"{title_text} ({active_mode})", fontsize=11, pad=10)
+
+    # 6. Save image
+    output_file = os.path.join(results_dir, f"{active_case}_{active_mode}_trajectory.png")
+    fig_paper.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close(fig_paper)
-    print(f"\n[SUCCESS] Saved trajectory plot to: {output_file}")
+    print(f"\n[SUCCESS] Saved paper-style trajectory plot to: {output_file}")
+
 except Exception as e:
     print(f"\n[ERROR] Plotting failed: {e}")
 
