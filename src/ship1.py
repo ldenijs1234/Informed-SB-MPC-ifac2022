@@ -111,7 +111,7 @@ while not rospy.is_shutdown():
     solve_times.append(step_solve_time_ms)
 
     # ALWAY RECORD HISTORY (Fallback to all_states if out of detection range)
-    ts_x, ts_y, ts_psi, ts_u = 0.0, 0.0, 0.0, 0.0
+    ts_x, ts_y, ts_psi, ts_u = None, None, None, None
     if len(ts_list) > 0:
         ts_x = ts_list[0].x
         ts_y = ts_list[0].y
@@ -235,11 +235,20 @@ try:
     if len(ts_wps) > 1:
         ax.plot([wp[0] for wp in ts_wps], [wp[1] for wp in ts_wps], 'm--', alpha=0.4, linewidth=1.0)
 
-    # 3. Driven directly from the safe DataFrame using .to_numpy()
+    # 3. Driven directly from DataFrame with (0, 0) dummy artifact filtered out
     s1_x = df['ship_1_x'].to_numpy()
     s1_y = df['ship_1_y'].to_numpy()
-    s2_x = df['ship_2_x'].to_numpy()
-    s2_y = df['ship_2_y'].to_numpy()
+
+    # Mask out uninitialized (0, 0) coordinates for TS
+    ts_valid_mask = ~((df['ship_2_x'] == 0.0) & (df['ship_2_y'] == 0.0))
+    
+    # If the ship actually started near (0,0), fallback to entire series
+    if ts_valid_mask.sum() > 0:
+        s2_x = df.loc[ts_valid_mask, 'ship_2_x'].to_numpy()
+        s2_y = df.loc[ts_valid_mask, 'ship_2_y'].to_numpy()
+    else:
+        s2_x = df['ship_2_x'].to_numpy()
+        s2_y = df['ship_2_y'].to_numpy()
 
     ax.plot(s1_x, s1_y, 'b-', label='ship_1 (OS)', linewidth=1.5)
     ax.plot(s2_x, s2_y, 'm-', label='ship_2 (TS)', linewidth=1.5)
