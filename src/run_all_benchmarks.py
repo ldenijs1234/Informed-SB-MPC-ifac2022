@@ -19,7 +19,7 @@ CASES = {
     'case03': {
         'T_sim': 400,
         'ship1': [[0.0, -2000.0, 8.0], [0.0, 2000.0, 8.0]],
-        'ship2': [[2000.0, 0.0, 8.0], [0.0, 0.0, 8.0], [0.0, 2000.0, 8.0]]
+        'ship2': [[2000.0, 0.0, 8.0], [200.0, 0.0, 8.0], [200.0, 2000.0, 8.0]]
     },
     'case04': {
         'T_sim': 450,
@@ -34,7 +34,7 @@ CASES = {
     'case06': {
         'T_sim': 500,
         'ship1': [[50.0, -2500.0, 8.0], [50.0, 2500.0, 8.0]],
-        'ship2': [[50.0, -1200.0, 4.0], [50.0, 2500.0, 4.0]]
+        'ship2': [[50.0, -1200.0, 6.0], [50.0, 2500.0, 6.0]]
     }
 }
 
@@ -62,7 +62,10 @@ ship2_trajectory = {case_data['ship2']}
 psi2 = math.atan2(ship2_trajectory[1][1] - ship2_trajectory[0][1], ship2_trajectory[1][0] - ship2_trajectory[0][0])
 ship2_init_states = [0, 'ship_2', ship2_trajectory[0][0], ship2_trajectory[0][1], psi2, ship2_trajectory[0][2], 0.0, 0.0, "PDV", ship2_trajectory]
 
-all_states = {{'ship_1': ship1_init_states, 'ship_2': ship2_init_states}}
+ship1_bcast_init = [0, 'ship_1', ship1_trajectory[0][0], ship1_trajectory[0][1], psi1, ship1_trajectory[0][2], "PDV", ship1_trajectory]
+ship2_bcast_init = [0, 'ship_2', ship2_trajectory[0][0], ship2_trajectory[0][1], psi2, ship2_trajectory[0][2], "PDV", ship2_trajectory]
+
+all_states = {{'ship_1': ship1_bcast_init, 'ship_2': ship2_bcast_init}}
 """
     with open(CONFIG_PATH, "w") as f:
         f.write(content)

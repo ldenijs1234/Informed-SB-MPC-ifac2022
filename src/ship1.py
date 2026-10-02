@@ -204,45 +204,29 @@ if len(history) > 0:
 # PAPER PLOT (FIG. a / FIG. b)
 #############################
 try:
-    df_anim, anim_length = create_animation_data(ownship, ts_list)
-    sim_results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sim_results")
-    os.makedirs(sim_results_dir, exist_ok=True)
-
     fig_paper, ax = plt.subplots(figsize=(6, 9))
-    ax.grid(True, linestyle='-', alpha=0.5)
-    ax.set_xlim(-2500.0, 2500.0)
-    ax.set_ylim(-2500.0, 2500.0)
+        
+    # Plot physical paths directly from our safe dataframe
+    ax.plot(df['ship_1_x'], df['ship_1_y'], 'b-', label='OS (ship_1)', linewidth=1.5)
+    ax.plot(df['ship_2_x'], df['ship_2_y'], 'r-', label='TS (ship_2)', linewidth=1.5)
+        
+    # Mark endpoints
+    ax.plot(df['ship_1_x'].iloc[-1], df['ship_1_y'].iloc[-1], 'bo', mfc='none', markersize=8)
+    ax.plot(df['ship_2_x'].iloc[-1], df['ship_2_y'].iloc[-1], 'ro', mfc='none', markersize=8)
+        
+    ax.grid(True, linestyle='--', alpha=0.6)
+    ax.set_title(f"{active_case} Trajectory ({active_mode})")
+    ax.set_xlabel("East (X) [m]")
+    ax.set_ylabel("North (Y) [m]")
+    ax.legend()
 
-    # Land polygons (wheat/gray)
-    try:
-        for geom in poly_full.geoms:
-            xs, ys = geom.exterior.xy
-            ax.fill(xs, ys, c='gray', alpha=0.8, fc='wheat')
-    except Exception:
-        pass
-
-    # Nominal path lines (dashed)
-    ax.plot([wp[0] for wp in ownship.wp], [wp[1] for wp in ownship.wp], 'b--', alpha=0.4, linewidth=1)
-    for ts in ts_list:
-        ax.plot([wp[0] for wp in ts.wp], [wp[1] for wp in ts.wp], 'm--', alpha=0.4, linewidth=1)
-
-    # Convert Series to numpy arrays (.to_numpy()) to avoid pandas/matplotlib 2D indexing issue:
-    ax.plot(df_anim['ship_1_x'].to_numpy(), df_anim['ship_1_y'].to_numpy(), 'b-', label='ship_1 (OS)', linewidth=1.5)
-    for ts in ts_list:
-        ax.plot(df_anim[f'{ts.id}_x'].to_numpy(), df_anim[f'{ts.id}_y'].to_numpy(), 'm-', label=ts.id, linewidth=1.5)
-
-    # End positions (markers)
-    ax.plot(df_anim['ship_1_x'].iloc[-1], df_anim['ship_1_y'].iloc[-1], 'bo', mfc='none', markersize=8)
-    for ts in ts_list:
-        ax.plot(df_anim[f'{ts.id}_x'].iloc[-1], df_anim[f'{ts.id}_y'].iloc[-1], 'mo', mfc='none', markersize=8)
-
-    plt.title("Head-on Encounter Result")
-    output_file = os.path.join(sim_results_dir, f"{active_case}_{active_mode}_trajectory.png")
+    plot_filename = f"{active_case}_{active_mode}_trajectory.png"
+    output_file = os.path.join(results_dir, plot_filename)
     fig_paper.savefig(output_file, dpi=300)
     plt.close(fig_paper)
     print(f"\n[SUCCESS] Saved trajectory plot to: {output_file}")
 except Exception as e:
-    print(f"\n[ERROR] Failed to create/save trajectory plot: {e}")
+    print(f"\n[ERROR] Plotting failed: {e}")
 
 rospy.signal_shutdown("Simulation and plotting finished successfully.")
 
