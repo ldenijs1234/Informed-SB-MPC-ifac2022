@@ -28,7 +28,7 @@ class SBMPC:
         # Control behaviors for scenario combinations
         self.chi_ca = np.deg2rad(
             np.array([-90.0, -75.0, -60.0, -45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0]))
-        self.p_ca = np.array([0.0, 0.5, 1.0])
+        self.p_ca = np.array([1.0])
         self.chi_ca_last = 0
         self.p_ca_last = 1
 
@@ -114,6 +114,14 @@ class SBMPC:
 
         # Cost function: Hazard value for the scenario (H)
         cost = H1 + H2
+        
+        # --- DEBUG PRINT BLOCK ---
+        # Only print for the 15 degree candidates to keep the terminal clean
+        deg_cand = round(math.degrees(chi_ca), 1)
+        if deg_cand in [-15.0, 15.0]:
+            print(f"[SB-MPC Debug] Chi: {deg_cand:>5}° | Speed: {p_ca:.1f} | "
+                  f"Max Hazard (H1): {H1:>6.2f} | Steering Cost (H2): {H2:>5.2f} | Total: {cost:>6.2f}")
+        # -------------------------
         return cost
 
     def k_ci(self, chi_ca, params):

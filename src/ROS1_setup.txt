@@ -16,3 +16,5 @@ catkin_make
 source devel/setup.bash
 
 roslaunch informed_sbmpc mass_sim.launch
+
+python3 src/informed_sbmpc/src/run_all_benchmarks.py
