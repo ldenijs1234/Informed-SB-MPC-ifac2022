@@ -139,7 +139,7 @@ class SBMPC:
             return params['k_dchi_port'] * (d_chi**2)
 
     def get_optimal_ctrl_offset(self, ownship, ts_list):
-        sync_t = 0.6
+        sync_t = 0.0
         start_time = time.time()
         sbmpc_active = False
         ground_flag = False
