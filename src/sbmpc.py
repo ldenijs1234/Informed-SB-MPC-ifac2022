@@ -28,7 +28,7 @@ class SBMPC:
         # Control behaviors for scenario combinations
         self.chi_ca = np.deg2rad(
             np.array([-90.0, -75.0, -60.0, -45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0]))
-        self.p_ca = np.array([1.0])
+        self.p_ca = np.array([0.0, 0.5, 1.0])
         self.chi_ca_last = 0
         self.p_ca_last = 1
 
