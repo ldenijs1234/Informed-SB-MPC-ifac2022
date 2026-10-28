@@ -117,10 +117,10 @@ class SBMPC:
         
         # --- DEBUG PRINT BLOCK ---
         # Only print for the 15 degree candidates to keep the terminal clean
-        deg_cand = round(math.degrees(chi_ca), 1)
-        if deg_cand in [-15.0, 15.0]:
-            print(f"[SB-MPC Debug] Chi: {deg_cand:>5}° | Speed: {p_ca:.1f} | "
-                  f"Max Hazard (H1): {H1:>6.2f} | Steering Cost (H2): {H2:>5.2f} | Total: {cost:>6.2f}")
+        # deg_cand = round(math.degrees(chi_ca), 1)
+        # if deg_cand in [-15.0, 15.0]:
+        #     print(f"[SB-MPC Debug] Chi: {deg_cand:>5}° | Speed: {p_ca:.1f} | "
+        #           f"Max Hazard (H1): {H1:>6.2f} | Steering Cost (H2): {H2:>5.2f} | Total: {cost:>6.2f}")
         # -------------------------
         return cost
 
